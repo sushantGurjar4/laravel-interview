@@ -104,12 +104,15 @@
             const prizeProbabilities = @json($prizes->pluck('probability'));
             const prizeAwarded = @json($prizes->pluck('awarded'));
 
+            // Total number of prizes awarded for percentage calculation
+            const totalAwarded = prizeAwarded.reduce((a, b) => a + b, 0);
+
             // Probability Chart Configuration
             const probabilityCtx = document.getElementById('probabilityChart').getContext('2d');
             const probabilityChart = new Chart(probabilityCtx, {
                 type: 'pie',
                 data: {
-                    labels: prizeTitles,
+                    labels: prizeTitles.map((title, index) => `${title} (${prizeProbabilities[index]}%)`),
                     datasets: [{
                         label: 'Prize Probabilities',
                         data: prizeProbabilities,
@@ -125,7 +128,7 @@
                         },
                         datalabels: {
                             formatter: (value, context) => {
-                                return `${context.chart.data.labels[context.dataIndex]} (${value}%)`;
+                                return `${context.chart.data.labels[context.dataIndex]}`;
                             },
                             color: '#fff',
                         }
@@ -134,15 +137,15 @@
                 plugins: [ChartDataLabels]
             });
 
-            // Total number of prizes awarded for percentage calculation
-            const totalAwarded = prizeAwarded.reduce((a, b) => a + b, 0);
-
             // Awarded Chart Configuration
             const awardedCtx = document.getElementById('awardedChart').getContext('2d');
             const awardedChart = new Chart(awardedCtx, {
                 type: 'pie',
                 data: {
-                    labels: prizeTitles,
+                    labels: prizeTitles.map((title, index) => {
+                        let percentage = ((prizeAwarded[index] / totalAwarded) * 100).toFixed(2);
+                        return `${title} (${percentage}%)`;
+                    }),
                     datasets: [{
                         label: 'Actual Rewards',
                         data: prizeAwarded,
@@ -159,7 +162,7 @@
                         datalabels: {
                             formatter: (value, context) => {
                                 let percentage = ((value / totalAwarded) * 100).toFixed(2);
-                                return percentage > 0 ? `${context.chart.data.labels[context.dataIndex]} (${percentage}%)` : ''; // Show label and percentage if greater than 0%
+                                return percentage > 0 ? `${context.chart.data.labels[context.dataIndex]}` : ''; // Show label and percentage if greater than 0%
                             },
                             color: '#fff',
                         }
