@@ -20,8 +20,12 @@ class PrizesController extends Controller
     public function index()
     {
         $prizes = Prize::all();
+        $totalProbability = round($prizes->sum('probability'), 2);
 
-        return view('prizes.index', ['prizes' => $prizes]);
+        return view('prizes.index', [
+            'prizes' => $prizes,
+            'totalProbability' => $totalProbability,
+        ]);
     }
 
     /**
@@ -75,10 +79,10 @@ class PrizesController extends Controller
     {
         $prize = Prize::findOrFail($id);
         $prize->title = $request->input('title');
-        $prize->probability = floatval($request->input('probability'));
+        $prize->probability = $request->input('probability');
         $prize->save();
 
-        return to_route('prizes.index');
+        return to_route('prizes.index')->with('success', 'Prize updated successfully!');
     }
 
     /**
@@ -98,10 +102,29 @@ class PrizesController extends Controller
 
     public function simulate(Request $request)
     {
+        $numberOfPrizes = $request->input('number_of_prizes', 10);
+        $prizes = Prize::all();
 
+        // Calculate total probability
+        $totalProbability = $prizes->sum('probability');
 
-        for ($i = 0; $i < $request->number_of_prizes ?? 10; $i++) {
-            Prize::nextPrize();
+        if (abs($totalProbability - 100) > 0.01) {
+            return redirect()->route('prizes.index')
+                             ->with('error', 'Total probability must be equal to 100% before running the simulation.');
+        }
+
+        for ($i = 0; $i < $numberOfPrizes; $i++) {
+            $random = mt_rand(1, 100); // Get a random number between 1 and 100
+            $cumulativeProbability = 0;
+
+            foreach ($prizes as $prize) {
+                $cumulativeProbability += $prize->probability;
+
+                if ($random <= $cumulativeProbability) {
+                    $prize->increment('awarded');
+                    break;
+                }
+            }
         }
 
         return to_route('prizes.index');
